@@ -14,7 +14,7 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://siraki-bookshop.vercel.app'
+    'https://siraki-bookshop-frontend.vercel.app'
   ]
 }));
 app.use(express.json());
