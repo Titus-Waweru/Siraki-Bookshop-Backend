@@ -8,54 +8,67 @@ const orderRoutes = require('./routes/orderRoutes');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// =====================
+// 🔐 Middleware
+// =====================
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://siraki-bookshop.vercel.app'
+  ]
+}));
 app.use(express.json());
 
-// Routes
+// =====================
+// 📦 Routes
+// =====================
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 
-// 👉 STK Push route
-app.post('/api/stkpush', async (req, res) => {
+// =====================
+// 💰 MPESA STK Push
+// =====================
+app.post('/api/mpesa/stkpush', async (req, res) => {
   const { phone, amount } = req.body;
 
-  const shortCode = process.env.SHORT_CODE;
-  const passkey = process.env.PASSKEY;
-  const consumerKey = process.env.CONSUMER_KEY;
-  const consumerSecret = process.env.CONSUMER_SECRET;
-  const callbackUrl = process.env.CALLBACK_URL;
+  const {
+    SHORT_CODE,
+    PASSKEY,
+    CONSUMER_KEY,
+    CONSUMER_SECRET,
+    CALLBACK_URL,
+  } = process.env;
 
   const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
-  const password = Buffer.from(`${shortCode}${passkey}${timestamp}`).toString('base64');
+  const password = Buffer.from(`${SHORT_CODE}${PASSKEY}${timestamp}`).toString('base64');
 
   try {
-    // 🔐 Get access token
-    const auth = await axios.get(
+    // 1️⃣ Get Access Token
+    const authResponse = await axios.get(
       'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
       {
         auth: {
-          username: consumerKey,
-          password: consumerSecret,
+          username: CONSUMER_KEY,
+          password: CONSUMER_SECRET,
         },
       }
     );
 
-    const token = auth.data.access_token;
+    const token = authResponse.data.access_token;
 
-    // 📲 Send STK Push
-    const stkRes = await axios.post(
+    // 2️⃣ Initiate STK Push
+    const stkResponse = await axios.post(
       'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
       {
-        BusinessShortCode: shortCode,
+        BusinessShortCode: SHORT_CODE,
         Password: password,
         Timestamp: timestamp,
         TransactionType: 'CustomerPayBillOnline',
         Amount: amount,
         PartyA: phone,
-        PartyB: shortCode,
+        PartyB: SHORT_CODE,
         PhoneNumber: phone,
-        CallBackURL: callbackUrl,
+        CallBackURL: CALLBACK_URL,
         AccountReference: 'SIRAKI_BOOKSHOP',
         TransactionDesc: 'Order Payment',
       },
@@ -66,26 +79,30 @@ app.post('/api/stkpush', async (req, res) => {
       }
     );
 
-    res.json({
-      message: 'STK Push initiated successfully!',
-      response: stkRes.data,
+    res.status(200).json({
+      message: '✅ STK Push initiated',
+      response: stkResponse.data,
     });
   } catch (err) {
-    console.error('STK Push Error:', err?.response?.data || err.message);
+    console.error('❌ STK Push Error:', err?.response?.data || err.message);
     res.status(500).json({
-      error: 'STK Push failed.',
+      error: 'STK Push failed',
       details: err?.response?.data || err.message,
     });
   }
 });
 
-// Root route
+// =====================
+// 🔍 Root route
+// =====================
 app.get('/', (req, res) => {
   res.send('Siraki Bookshop API is running ✅');
 });
 
-// Start Server
+// =====================
+// 🚀 Start Server
+// =====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Siraki API running on: http://localhost:${PORT}`);
 });
