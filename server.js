@@ -15,6 +15,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'https://siraki-bookshop-frontend.vercel.app'
+    'https://www.sirakibookstore.co.ke'
   ]
 }));
 app.use(express.json());
